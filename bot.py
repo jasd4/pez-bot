@@ -4,6 +4,10 @@ import os
 from dotenv import load_dotenv
 from spotify_client import sp
 import requests
+from playlist_manager import create_playlist, add_to_playlist, get_playlist
+
+
+
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -66,7 +70,53 @@ async def lyrics(ctx, *, query: str):
     else:
         await ctx.send(f"Sorry, no lyrics found for {title} by {artist}.")
     
-    
+@bot.command()
+async def createplaylist(ctx, name):
+    server_id = ctx.guild.id
+    success = create_playlist(server_id, name)
+
+    if success:
+        await ctx.send(f"Playlist `{name}` created!")
+    else:
+        await ctx.send(f"Playlist `{name}` already exists.")
+
+@bot.command()
+async def addtoplaylist(ctx, name, *, query: str):
+    server_id = ctx.guild.id
+    results = sp.search(q=query, type="track", limit=1)
+
+    if not results["tracks"]["items"]:
+        await ctx.send("No track found.")
+        return
+
+    track = results["tracks"]["items"][0]
+    song_info = {
+        "title": track["name"],
+        "artist": track["artists"][0]["name"],
+        "url": track["external_urls"]["spotify"]
+    }
+
+    success = add_to_playlist(server_id, name, song_info)
+
+    if success:
+        await ctx.send(f"Added `{song_info['title']}` by `{song_info['artist']}` to `{name}`.")
+    else:
+        await ctx.send(f"Playlist `{name}` not found.")
+
+@bot.command()
+async def showplaylist(ctx, name):
+    server_id = ctx.guild.id
+    playlist = get_playlist(server_id, name)
+
+    if not playlist:
+        await ctx.send(f"Playlist `{name}` not found or is empty.")
+        return
+
+    response = f"**Playlist: {name}**\n"
+    for i, song in enumerate(playlist, start=1):
+        response += f"{i}. [{song['title']} - {song['artist']}]({song['url']})\n"
+
+    await ctx.send(response)
 
    
    
